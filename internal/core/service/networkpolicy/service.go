@@ -11,11 +11,19 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Service struct {
-	client *kubernetes.Clientset
+type ServiceInterface interface {
+	ListNetworkPolicies(ctx context.Context, namespace string) (*dto.NetworkPolicyList, error)
+	GetNetworkPolicy(ctx context.Context, namespace string, networkPolicyName string) (*dto.NetworkPolicy, error)
+	CreateNetworkPolicy(ctx context.Context, networkPolicyCreate *dto.NetworkPolicyCreate) (*dto.NetworkPolicy, error)
+	UpdateNetworkPolicy(ctx context.Context, namespace string, networkPolicyName string, updates *dto.NetworkPolicyUpdate) (*dto.NetworkPolicy, error)
+	DeleteNetworkPolicy(ctx context.Context, namespace string, networkPolicyName string) error
 }
 
-func NewService(client *kubernetes.Clientset) *Service {
+type Service struct {
+	client kubernetes.Interface
+}
+
+func NewService(client kubernetes.Interface) *Service {
 	return &Service{
 		client: client,
 	}

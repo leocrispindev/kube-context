@@ -11,11 +11,19 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Service struct {
-	client *kubernetes.Clientset
+type ServiceInterface interface {
+	ListConfigMaps(ctx context.Context, namespace string) (*dto.ConfigMapList, error)
+	GetConfigMap(ctx context.Context, namespace string, configMapName string) (*dto.ConfigMap, error)
+	CreateConfigMap(ctx context.Context, configMapCreate *dto.ConfigMapCreate) (*dto.ConfigMap, error)
+	UpdateConfigMap(ctx context.Context, namespace string, configMapName string, updates *dto.ConfigMapUpdate) (*dto.ConfigMap, error)
+	DeleteConfigMap(ctx context.Context, namespace string, configMapName string) error
 }
 
-func NewService(client *kubernetes.Clientset) *Service {
+type Service struct {
+	client kubernetes.Interface
+}
+
+func NewService(client kubernetes.Interface) *Service {
 	return &Service{
 		client: client,
 	}

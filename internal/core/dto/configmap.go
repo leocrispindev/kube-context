@@ -13,13 +13,13 @@ type ConfigMap struct {
 }
 
 type ConfigMapCreate struct {
-	Name      string            `json:"name" binding:"required"`
-	Namespace string            `json:"namespace" binding:"required"`
-	Data      map[string]string `json:"data" binding:"required"`
-	Labels    map[string]string `json:"labels,omitempty"`
+	Name      string            `json:"name" jsonschema:"required,description:Name of the configmap"`
+	Namespace string            `json:"namespace" jsonschema:"required,description:Kubernetes namespace"`
+	Data      map[string]string `json:"data" jsonschema:"required,description:Key-value data entries for the configmap"`
+	Labels    map[string]string `json:"labels,omitempty" jsonschema:"description:Labels for the configmap"`
 }
 
 type ConfigMapUpdate struct {
-	Data   map[string]string `json:"data,omitempty"`
-	Labels map[string]string `json:"labels,omitempty"`
+	Data   map[string]string `json:"data,omitempty" jsonschema:"description:Updated data entries"`
+	Labels map[string]string `json:"labels,omitempty" jsonschema:"description:Updated labels"`
 }

@@ -17,17 +17,17 @@ type PodDetails struct {
 }
 
 type PodCreate struct {
-	Name      string            `json:"name" binding:"required"`
-	Namespace string            `json:"namespace" binding:"required"`
-	Image     string            `json:"image" binding:"required"`
-	Labels    map[string]string `json:"labels,omitempty"`
-	Port      int32             `json:"port,omitempty"`
-	Env       map[string]string `json:"env,omitempty"`
-	Command   []string          `json:"command,omitempty"`
-	Args      []string          `json:"args,omitempty"`
+	Name      string            `json:"name" jsonschema:"required,description:Name of the pod to create"`
+	Namespace string            `json:"namespace" jsonschema:"required,description:Kubernetes namespace for the pod"`
+	Image     string            `json:"image" jsonschema:"required,description:Container image (e.g. nginx:latest)"`
+	Labels    map[string]string `json:"labels,omitempty" jsonschema:"description:Key-value labels for the pod"`
+	Port      int32             `json:"port,omitempty" jsonschema:"description:Container port to expose"`
+	Env       map[string]string `json:"env,omitempty" jsonschema:"description:Environment variables as key-value pairs"`
+	Command   []string          `json:"command,omitempty" jsonschema:"description:Container command override"`
+	Args      []string          `json:"args,omitempty" jsonschema:"description:Arguments for the container command"`
 }
 
 type PodUpdate struct {
-	Labels map[string]string `json:"labels,omitempty"`
-	Image  string            `json:"image,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" jsonschema:"description:Updated labels for the pod"`
+	Image  string            `json:"image,omitempty" jsonschema:"description:New container image"`
 }

@@ -1,17 +1,10 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"os"
-
-	"k8s-agent-new/internal/infrastructure/delivery/http"
-	configmapHandler "k8s-agent-new/internal/infrastructure/handler/configmap"
-	deploymentHandler "k8s-agent-new/internal/infrastructure/handler/deployment"
-	ingressHandler "k8s-agent-new/internal/infrastructure/handler/ingress"
-	namespaceHandler "k8s-agent-new/internal/infrastructure/handler/namespace"
-	networkpolicyHandler "k8s-agent-new/internal/infrastructure/handler/networkpolicy"
-	podHandler "k8s-agent-new/internal/infrastructure/handler/pod"
-	serviceHandler "k8s-agent-new/internal/infrastructure/handler/service"
 
 	"k8s-agent-new/internal/core/service/configmap"
 	"k8s-agent-new/internal/core/service/deployment"
@@ -21,11 +14,18 @@ import (
 	"k8s-agent-new/internal/core/service/pod"
 	"k8s-agent-new/internal/core/service/service"
 	"k8s-agent-new/internal/infrastructure/adapter"
+	mcpSetup "k8s-agent-new/internal/infrastructure/mcp"
 
 	"github.com/gin-gonic/gin"
+	mcphttp "github.com/metoro-io/mcp-golang/transport/http"
+	"github.com/metoro-io/mcp-golang/transport/stdio"
 )
 
-func startup() (http.Handlers, error) {
+func main() {
+	done := make(chan struct{})
+	useStdio := flag.Bool("stdio", false, "use stdio transport (stdin/stdout) instead of HTTP")
+	flag.Parse()
+
 	clientProvider, err := adapter.InitClientProvider()
 	if err != nil {
 		log.Fatalf("Failed to initialize Kubernetes client: %v", err)
@@ -33,44 +33,46 @@ func startup() (http.Handlers, error) {
 
 	clientset := clientProvider.Clientset()
 
-	podSvc := pod.NewService(clientset)
-	nsSvc := namespace.NewService(clientset)
-	deploySvc := deployment.NewService(clientset)
-	cmSvc := configmap.NewService(clientset)
-	svcSvc := service.NewService(clientset)
-	ingSvc := ingress.NewService(clientset)
-	netpolSvc := networkpolicy.NewService(clientset)
-
-	return http.Handlers{
-		Pod:           podHandler.NewHandler(podSvc),
-		Namespace:     namespaceHandler.NewHandler(nsSvc),
-		Deployment:    deploymentHandler.NewHandler(deploySvc),
-		ConfigMap:     configmapHandler.NewHandler(cmSvc),
-		Service:       serviceHandler.NewHandler(svcSvc),
-		Ingress:       ingressHandler.NewHandler(ingSvc),
-		NetworkPolicy: networkpolicyHandler.NewHandler(netpolSvc),
-	}, nil
-}
-
-func main() {
-	handlers, err := startup()
-	if err != nil {
-		log.Fatalf("Failed to initialize Kubernetes client: %v", err)
+	svcs := mcpSetup.Services{
+		Pod:           pod.NewService(clientset),
+		Namespace:     namespace.NewService(clientset),
+		Deployment:    deployment.NewService(clientset),
+		ConfigMap:     configmap.NewService(clientset),
+		Service:       service.NewService(clientset),
+		Ingress:       ingress.NewService(clientset),
+		NetworkPolicy: networkpolicy.NewService(clientset),
 	}
 
-	r := gin.Default()
-
-	http.AddRoutes(r, handlers)
+	if *useStdio {
+		fmt.Fprintln(os.Stderr, "MCP server (stdio) starting...")
+		transport := stdio.NewStdioServerTransport()
+		server := mcpSetup.NewMCPServer(transport, svcs)
+		fmt.Fprintln(os.Stderr, "MCP server (stdio) running. Waiting for messages.")
+		if err := server.Serve(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		<-done
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
+	transport := mcphttp.NewGinTransport()
+	server := mcpSetup.NewMCPServer(transport, svcs)
+	go server.Serve()
+
+	r := gin.Default()
+	r.POST("/mcp", transport.Handler())
+	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+
 	log.Println("==============================================")
-	log.Println("  Kubernetes Agent Server")
+	log.Println("  Kubernetes Agent MCP Server")
 	log.Println("==============================================")
-	log.Printf("Server starting on port %s", port)
+	log.Printf("MCP endpoint: POST http://localhost:%s/mcp", port)
+	log.Printf("Health check: GET  http://localhost:%s/health", port)
 	log.Println("==============================================")
 
 	if err := r.Run(":" + port); err != nil {

@@ -17,9 +17,9 @@ type Deployment struct {
 }
 
 type DeploymentUpdate struct {
-	Replicas *int32            `json:"replicas,omitempty"`
-	Images   map[string]string `json:"images,omitempty"`
-	Labels   map[string]string `json:"labels,omitempty"`
+	Replicas *int32            `json:"replicas,omitempty" jsonschema:"description:Desired number of replicas"`
+	Images   map[string]string `json:"images,omitempty" jsonschema:"description:Map of container name to new image"`
+	Labels   map[string]string `json:"labels,omitempty" jsonschema:"description:Updated labels"`
 }
 
 type RolloutStatus struct {
@@ -31,11 +31,11 @@ type RolloutStatus struct {
 }
 
 type DeploymentCreate struct {
-	Name      string            `json:"name" binding:"required"`
-	Namespace string            `json:"namespace" binding:"required"`
-	Image     string            `json:"image" binding:"required"`
-	Labels    map[string]string `json:"labels,omitempty"`
-	Replicas  int32             `json:"replicas,omitempty"`
-	Port      int32             `json:"port,omitempty"`
-	Env       map[string]string `json:"env,omitempty"`
+	Name      string            `json:"name" jsonschema:"required,description:Name of the deployment"`
+	Namespace string            `json:"namespace" jsonschema:"required,description:Kubernetes namespace"`
+	Image     string            `json:"image" jsonschema:"required,description:Container image (e.g. nginx:latest)"`
+	Labels    map[string]string `json:"labels,omitempty" jsonschema:"description:Labels for the deployment"`
+	Replicas  int32             `json:"replicas,omitempty" jsonschema:"description:Number of replicas (default 1)"`
+	Port      int32             `json:"port,omitempty" jsonschema:"description:Container port to expose"`
+	Env       map[string]string `json:"env,omitempty" jsonschema:"description:Environment variables as key-value pairs"`
 }

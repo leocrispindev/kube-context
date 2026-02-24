@@ -10,11 +10,20 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Service struct {
-	client *kubernetes.Clientset
+type ServiceInterface interface {
+	ListNamespaces(ctx context.Context) (*dto.NamespaceList, error)
+	CreateNamespace(ctx context.Context, namespace string, labels map[string]string, annotations map[string]string) error
+	DeleteNamespace(ctx context.Context, namespace string) error
+	GetNamespace(ctx context.Context, namespace string) (*dto.Namespace, error)
+	UpdateNamespace(ctx context.Context, namespace string, labels map[string]string, annotations map[string]string) error
+	UpdateResources(ctx context.Context, namespace string, resources v1.ResourceQuotaSpec) error
 }
 
-func NewService(client *kubernetes.Clientset) *Service {
+type Service struct {
+	client kubernetes.Interface
+}
+
+func NewService(client kubernetes.Interface) *Service {
 	return &Service{
 		client: client,
 	}
@@ -32,7 +41,7 @@ func (s *Service) ListNamespaces(ctx context.Context) (*dto.NamespaceList, error
 			Name:        ns.Name,
 			Labels:      ns.Labels,
 			Annotations: ns.Annotations,
-			Status:      ns.Status,
+			Status:      string(ns.Status.Phase),
 		})
 	}
 
@@ -68,7 +77,7 @@ func (s *Service) GetNamespace(ctx context.Context, namespace string) (*dto.Name
 		Name:        ns.Name,
 		Labels:      ns.Labels,
 		Annotations: ns.Annotations,
-		Status:      ns.Status,
+		Status:      string(ns.Status.Phase),
 	}, nil
 }
 

@@ -11,11 +11,21 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Service struct {
-	client *kubernetes.Clientset
+type ServiceInterface interface {
+	ListPods(ctx context.Context, namespace string) (*dto.PodList, error)
+	ScalePod(ctx context.Context, namespace string, podName string, replicas int32) (*dto.PodList, error)
+	GetPod(ctx context.Context, namespace string, podName string) (*dto.PodDetails, error)
+	DeletePod(ctx context.Context, namespace string, podName string) error
+	RestartPod(ctx context.Context, namespace string, podName string) error
+	CreatePod(ctx context.Context, podCreate *dto.PodCreate) (*dto.PodDetails, error)
+	UpdatePod(ctx context.Context, namespace string, podName string, updates *dto.PodUpdate) (*dto.PodDetails, error)
 }
 
-func NewService(client *kubernetes.Clientset) *Service {
+type Service struct {
+	client kubernetes.Interface
+}
+
+func NewService(client kubernetes.Interface) *Service {
 	return &Service{
 		client: client,
 	}

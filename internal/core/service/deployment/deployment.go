@@ -12,11 +12,21 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Service struct {
-	client *kubernetes.Clientset
+type ServiceInterface interface {
+	ListDeployments(ctx context.Context, namespace string) (*dto.DeploymentList, error)
+	UpdateDeployment(ctx context.Context, namespace string, deploymentName string, updates dto.DeploymentUpdate) error
+	GetRolloutStatus(ctx context.Context, namespace string, deploymentName string) (*dto.RolloutStatus, error)
+	TogglePauseDeployment(ctx context.Context, namespace string, deploymentName string, pause bool) error
+	GetDeployment(ctx context.Context, namespace string, deploymentName string) (*dto.Deployment, error)
+	CreateDeployment(ctx context.Context, deployCreate *dto.DeploymentCreate) (*dto.Deployment, error)
+	DeleteDeployment(ctx context.Context, namespace string, deploymentName string) error
 }
 
-func NewService(client *kubernetes.Clientset) *Service {
+type Service struct {
+	client kubernetes.Interface
+}
+
+func NewService(client kubernetes.Interface) *Service {
 	return &Service{
 		client: client,
 	}
