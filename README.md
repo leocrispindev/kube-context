@@ -140,13 +140,114 @@ export K8S_INSECURE="false"  # set to "true" to skip TLS verification
 export K8S_IN_CLUSTER="true"
 ```
 
-## Running Locally
+## Quick Start with Cursor
+
+The fastest way to get the k8s-agent running locally inside **Cursor** as an MCP server.
 
 ### Prerequisites
 
 - Go 1.25+
-- Access to a Kubernetes cluster (local or remote)
-- A valid `JWT_SECRET`
+- Access to a Kubernetes cluster (local via `~/.kube/config`, or remote)
+- A `JWT_SECRET` (any string for development, e.g. `"test"`)
+
+### 1. Clone and build
+
+```bash
+git clone https://github.com/<your-username>/k8s-agent-new.git
+cd k8s-agent-new
+go build -o k8s-mcp cmd/main.go
+```
+
+This produces a `k8s-mcp` binary in the project root.
+
+### 2. Configure Cursor
+
+Create or edit the file **`.cursor/mcp.json`** (in your home directory or project root) and add the k8s-agent server:
+
+```json
+{
+  "mcpServers": {
+    "k8s-mcp": {
+      "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
+      "args": ["--stdio"],
+      "env": {
+        "JWT_SECRET": "your-secret-key"
+      }
+    }
+  }
+}
+```
+
+> **Tip:** Replace `/absolute/path/to/k8s-agent-new/k8s-mcp` with the actual path to the built binary. For example:
+> ```
+> /Users/me/workspace/k8s-agent-new/k8s-mcp
+> ```
+
+### 3. Restart Cursor
+
+After saving `mcp.json`, restart Cursor (or reload the window). The k8s-agent tools will appear automatically in the MCP tool list. You can verify by asking the AI assistant to call `list_namespaces`.
+
+### 4. Passing the authentication token
+
+> **Important:** The k8s-agent uses JWT-based authentication. The token is **not** sent via HTTP headers — it must be passed as a **`token` parameter** in every MCP tool call. This is how authentication works locally: each tool expects a `token` field in its input arguments.
+
+When using Cursor, include the token directly in your prompt so the AI assistant sends it on every call. For example:
+
+```
+Use the following token for all k8s-agent tool calls:
+eyJhbGciOiJIUzI1NiIs...
+```
+
+The AI assistant will then include `"token": "eyJhbGciOiJIUzI1NiIs..."` as a parameter in every tool invocation automatically.
+
+You can generate a token using the included `jwt-gen` CLI:
+
+```bash
+go run cmd/jwt-gen/main.go
+```
+
+### 5. (Optional) Auto-inject the token
+
+To avoid passing the JWT token manually on every tool call, you can add it to the environment and create a Cursor rule to inject it automatically:
+
+**a)** Add `K8S_TOKEN` to the MCP config:
+
+```json
+{
+  "mcpServers": {
+    "k8s-mcp": {
+      "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
+      "args": ["--stdio"],
+      "env": {
+        "JWT_SECRET": "your-secret-key",
+        "K8S_TOKEN": "eyJhbGciOiJIUzI1NiIs..."
+      }
+    }
+  }
+}
+```
+
+**b)** Create a Cursor rule at `.cursor/rules/k8s-agent.mdc`:
+
+```markdown
+---
+description: Rules for k8s-agent MCP tools
+globs: *
+---
+
+When using any k8s-agent MCP tool, always pass the token from the
+environment variable K8S_TOKEN. Example:
+
+  token: ${K8S_TOKEN}
+
+Never ask the user for the token — use the environment variable directly.
+```
+
+---
+
+## Running Locally (standalone)
+
+If you prefer running the server **outside** of Cursor (e.g. for testing with `curl`):
 
 ### HTTP Mode (default)
 
@@ -289,7 +390,31 @@ The difference from local usage is:
 
 ### Cursor / AI Clients (stdio)
 
-Add to your MCP client configuration:
+> See [Quick Start with Cursor](#quick-start-with-cursor) for a complete step-by-step guide.
+
+There are two ways to configure Cursor:
+
+#### Option A — Pre-built binary (recommended)
+
+Build once with `go build -o k8s-mcp cmd/main.go`, then point Cursor to the binary:
+
+```json
+{
+  "mcpServers": {
+    "k8s-mcp": {
+      "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
+      "args": ["--stdio"],
+      "env": {
+        "JWT_SECRET": "your-secret-key"
+      }
+    }
+  }
+}
+```
+
+#### Option B — `go run` (no build step)
+
+Cursor compiles and runs on every startup — slower but requires no manual build:
 
 ```json
 {
@@ -305,18 +430,18 @@ Add to your MCP client configuration:
 }
 ```
 
-#### Passing the Token via Environment Variable in Your Prompt
+#### Auto-injecting the Token
 
-Since every tool call requires a `token` argument, a practical approach is to generate a token once, store it in an environment variable, and reference it in the AI assistant's prompt or system instructions.
+Since every tool call requires a `token` argument, you can automate this by adding the token to the `env` block and creating a Cursor rule.
 
-**Step 1** — Add the token to your MCP client configuration using an `env` block so it is available at runtime:
+**1.** Add `K8S_TOKEN` to the MCP config:
 
 ```json
 {
   "mcpServers": {
-    "k8s-agent": {
-      "command": "go",
-      "args": ["run", "cmd/main.go", "--stdio"],
+    "k8s-mcp": {
+      "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
+      "args": ["--stdio"],
       "env": {
         "JWT_SECRET": "your-secret-key",
         "K8S_TOKEN": "eyJhbGciOiJIUzI1NiIs..."
@@ -326,14 +451,7 @@ Since every tool call requires a `token` argument, a practical approach is to ge
 }
 ```
 
-**Step 3** — In your prompt (or Cursor rules), instruct the AI to use the token from the environment variable:
-
-```
-When calling any k8s-agent tool, always use the following token:
-${K8S_TOKEN}
-```
-
-Or more explicitly in a Cursor rule (`.cursor/rules/k8s-agent.mdc`):
+**2.** Create a Cursor rule at `.cursor/rules/k8s-agent.mdc`:
 
 ```markdown
 ---
@@ -349,7 +467,7 @@ environment variable K8S_TOKEN. Example:
 Never ask the user for the token — use the environment variable directly.
 ```
 
-This way the AI assistant will automatically include the token in every tool call without you having to paste it manually each time.
+This way the AI assistant will automatically include the token in every tool call without manual input.
 
 ### HTTP Clients
 
