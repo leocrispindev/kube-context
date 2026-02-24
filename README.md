@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red)
 
-# Kubernetes Agent MCP Server
+# Kubernetes MCP Server
 
 A Kubernetes agent that exposes cluster operations as **MCP (Model Context Protocol)** tools. It enables AI assistants and MCP-compatible clients to manage Kubernetes resources through a secure, multi-tenant interface powered by JWT authentication and Kubernetes RBAC impersonation.
 
@@ -236,8 +236,6 @@ Every tool expects a `token` field in its input. For example, to list namespaces
 Full `curl` example against the local server:
 
 ```bash
-TOKEN=$(go run cmd/jwt-gen/main.go -sub=admin -exp=24h)
-
 curl -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d "{
@@ -260,8 +258,6 @@ curl -X POST http://localhost:8080/mcp \
 For production deployments behind a TLS reverse proxy (e.g. `https://k8s-agent.example.com/mcp`), the mechanism is **exactly the same** — the token travels inside the MCP tool call arguments:
 
 ```bash
-TOKEN=$(curl -s "https://auth.example.com/token?sub=admin&exp_hours=24" | jq -r .token)
-
 curl -X POST https://k8s-agent.example.com/mcp \
   -H "Content-Type: application/json" \
   -d "{
@@ -313,13 +309,7 @@ Add to your MCP client configuration:
 
 Since every tool call requires a `token` argument, a practical approach is to generate a token once, store it in an environment variable, and reference it in the AI assistant's prompt or system instructions.
 
-**Step 1** — Generate a token and export it:
-
-```bash
-export K8S_TOKEN=$(JWT_SECRET="your-secret-key" go run cmd/jwt-gen/main.go -sub=admin -exp=24h -groups=devs,sre)
-```
-
-**Step 2** — Add the token to your MCP client configuration using an `env` block so it is available at runtime:
+**Step 1** — Add the token to your MCP client configuration using an `env` block so it is available at runtime:
 
 ```json
 {
