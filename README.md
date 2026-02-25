@@ -153,7 +153,7 @@ The fastest way to get the k8s-agent running locally inside **Cursor** as an MCP
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/<your-username>/k8s-agent-new.git
+git clone https://github.com/<your-username>/kube-context.git
 cd k8s-agent-new
 go build -o k8s-mcp cmd/main.go
 ```
@@ -168,7 +168,7 @@ Create or edit the file **`.cursor/mcp.json`** (in your home directory or projec
 {
   "mcpServers": {
     "k8s-mcp": {
-      "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
+      "command": "/absolute/path/to/kube-context/k8s-mcp",
       "args": ["--stdio"],
       "env": {
         "JWT_SECRET": "your-secret-key"
@@ -311,6 +311,116 @@ export K8S_BASE_TOKEN="<service-account-token>"
 export K8S_CA_CERT_PATH="/etc/k8s/ca.crt"
 export PORT="8080"
 ```
+
+## JWT Structure and Kubernetes Impersonation
+
+The k8s-agent **does not** communicate with the Kubernetes API as a single privileged identity. Instead, it uses [**User Impersonation**](https://kubernetes.io/docs/reference/access-authn-authz/authentication/#user-impersonation) — a native Kubernetes mechanism that allows a service account to perform API calls *on behalf of* the user described in the JWT.
+
+This means the permissions of each request are determined by the **Kubernetes RBAC rules bound to the impersonated user/groups**, not by the service account running the agent. This is the foundation for multi-tenant security: different users see only what their RBAC policies allow.
+
+### How it works
+
+1. The client sends a JWT `token` in every MCP tool call.
+2. The k8s-agent validates the signature (HS256) and expiration.
+3. Claims are extracted and mapped to Kubernetes impersonation headers:
+
+| JWT Claim | Kubernetes Header | Description |
+|-----------|-------------------|-------------|
+| `sub` (or `user`, `username`, `preferred_username`, `email`) | `Impersonate-User` | The identity used for RBAC evaluation. First non-empty value wins, checked in the listed order. |
+| `groups` | `Impersonate-Group` | List of groups. Kubernetes RBAC can bind roles to groups for broad access control. |
+| `extra` (or `extras`) | `Impersonate-Extra-<key>` | Arbitrary key-value pairs forwarded as extra impersonation attributes. |
+| `exp` | *(validation only)* | Standard JWT expiration (Unix timestamp). The token is rejected if expired. |
+
+4. The Kubernetes API server then evaluates the request as if it came directly from the impersonated user, applying all RBAC rules normally.
+
+### Required JWT payload
+
+The **only mandatory field** is the user identity — at least one of: `sub`, `user`, `username`, `preferred_username`, or `email`. Everything else is optional but recommended for fine-grained RBAC.
+
+#### Minimal payload
+
+```json
+{
+  "sub": "jane@example.com",
+  "exp": 1893456000
+}
+```
+
+This impersonates user `jane@example.com` with no groups and no extras.
+
+#### Full payload
+
+```json
+{
+  "sub": "jane@example.com",
+  "groups": ["team-backend", "developers"],
+  "extra": {
+    "department": ["engineering"],
+    "cost-center": ["cc-1234"]
+  },
+  "exp": 1893456000
+}
+```
+
+This impersonates `jane@example.com` as a member of `team-backend` and `developers`, with additional extra attributes forwarded to the API server.
+
+### JWT header
+
+The token must use the **HS256** algorithm and be signed with the secret defined in `JWT_SECRET`:
+
+```json
+{
+  "alg": "HS256",
+  "typ": "JWT"
+}
+```
+
+### Why impersonation?
+
+| Concern | How impersonation addresses it |
+|---------|-------------------------------|
+| **Multi-tenancy** | Each user gets only the permissions their RBAC policies grant — no shared super-admin. |
+| **Auditability** | Kubernetes audit logs record the impersonated user, not the service account, making it clear *who* performed each action. |
+| **Least privilege** | The agent's service account only needs the `impersonate` verb; actual resource permissions are defined per user/group via standard RBAC. |
+| **No credential leakage** | Users never receive a kubeconfig or service account token — the JWT is the only credential, and it can have short TTLs. |
+
+### RBAC setup for impersonation
+
+The service account (or kubeconfig user) running the k8s-agent needs permission to impersonate. Template manifests are provided in `deploy/rbac/`:
+
+```yaml
+# ClusterRole — allows impersonating a specific user
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: impersonate-jane
+rules:
+  - apiGroups: [""]
+    resources: ["users"]
+    resourceNames: ["jane@example.com"]
+    verbs: ["impersonate"]
+  - apiGroups: [""]
+    resources: ["groups"]
+    verbs: ["impersonate"]
+```
+
+```yaml
+# ClusterRoleBinding — binds the role to the agent's service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: impersonate-jane
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: impersonate-jane
+subjects:
+  - kind: ServiceAccount
+    name: k8s-agent
+    namespace: default
+```
+
+Then, bind regular Roles/ClusterRoles to `jane@example.com` (or her groups) to control what resources she can actually access.
 
 ## Authentication — Sending the Token
 
