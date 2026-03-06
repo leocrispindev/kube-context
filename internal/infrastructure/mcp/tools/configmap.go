@@ -10,7 +10,6 @@ import (
 )
 
 type CreateConfigMapArgs struct {
-	AuthArgs
 	dto.ConfigMapCreate
 }
 
@@ -22,8 +21,8 @@ type UpdateConfigMapArgs struct {
 func RegisterConfigMapTools(server *mcp.Server, svc *configmapService.Service) {
 	server.RegisterTool("list_configmaps",
 		"List all configmaps in a Kubernetes namespace.",
-		func(args NamespacedArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -36,8 +35,8 @@ func RegisterConfigMapTools(server *mcp.Server, svc *configmapService.Service) {
 
 	server.RegisterTool("get_configmap",
 		"Get details of a specific configmap by name and namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -50,8 +49,8 @@ func RegisterConfigMapTools(server *mcp.Server, svc *configmapService.Service) {
 
 	server.RegisterTool("create_configmap",
 		"Create a new configmap in Kubernetes.",
-		func(args CreateConfigMapArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args CreateConfigMapArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -64,8 +63,8 @@ func RegisterConfigMapTools(server *mcp.Server, svc *configmapService.Service) {
 
 	server.RegisterTool("update_configmap",
 		"Update an existing configmap (data and/or labels).",
-		func(args UpdateConfigMapArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args UpdateConfigMapArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -78,8 +77,8 @@ func RegisterConfigMapTools(server *mcp.Server, svc *configmapService.Service) {
 
 	server.RegisterTool("delete_configmap",
 		"Delete a configmap from a Kubernetes namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}

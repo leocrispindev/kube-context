@@ -10,7 +10,6 @@ import (
 )
 
 type CreateIngressArgs struct {
-	AuthArgs
 	dto.IngressCreate
 }
 
@@ -22,8 +21,8 @@ type UpdateIngressArgs struct {
 func RegisterIngressTools(server *mcp.Server, svc *ingressService.Service) {
 	server.RegisterTool("list_ingresses",
 		"List all ingresses in a Kubernetes namespace.",
-		func(args NamespacedArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -36,8 +35,8 @@ func RegisterIngressTools(server *mcp.Server, svc *ingressService.Service) {
 
 	server.RegisterTool("get_ingress",
 		"Get details of a specific ingress by name and namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -50,8 +49,8 @@ func RegisterIngressTools(server *mcp.Server, svc *ingressService.Service) {
 
 	server.RegisterTool("create_ingress",
 		"Create a new ingress in Kubernetes.",
-		func(args CreateIngressArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args CreateIngressArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -64,8 +63,8 @@ func RegisterIngressTools(server *mcp.Server, svc *ingressService.Service) {
 
 	server.RegisterTool("update_ingress",
 		"Update an existing ingress (class, labels, annotations).",
-		func(args UpdateIngressArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args UpdateIngressArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -78,8 +77,8 @@ func RegisterIngressTools(server *mcp.Server, svc *ingressService.Service) {
 
 	server.RegisterTool("delete_ingress",
 		"Delete an ingress from a Kubernetes namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}

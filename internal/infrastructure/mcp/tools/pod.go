@@ -10,7 +10,6 @@ import (
 )
 
 type CreatePodArgs struct {
-	AuthArgs
 	dto.PodCreate
 }
 
@@ -22,8 +21,8 @@ type UpdatePodArgs struct {
 func RegisterPodTools(server *mcp.Server, svc *podService.Service) {
 	server.RegisterTool("list_pods",
 		"List all pods in a Kubernetes namespace.",
-		func(args NamespacedArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -36,8 +35,8 @@ func RegisterPodTools(server *mcp.Server, svc *podService.Service) {
 
 	server.RegisterTool("get_pod",
 		"Get details of a specific pod by name and namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -50,8 +49,8 @@ func RegisterPodTools(server *mcp.Server, svc *podService.Service) {
 
 	server.RegisterTool("create_pod",
 		"Create a new pod in Kubernetes.",
-		func(args CreatePodArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args CreatePodArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -64,8 +63,8 @@ func RegisterPodTools(server *mcp.Server, svc *podService.Service) {
 
 	server.RegisterTool("update_pod",
 		"Update an existing pod (labels and/or image).",
-		func(args UpdatePodArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args UpdatePodArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -78,8 +77,8 @@ func RegisterPodTools(server *mcp.Server, svc *podService.Service) {
 
 	server.RegisterTool("delete_pod",
 		"Delete a pod from a Kubernetes namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -91,8 +90,8 @@ func RegisterPodTools(server *mcp.Server, svc *podService.Service) {
 
 	server.RegisterTool("restart_pod",
 		"Restart a pod by deleting it (the controller will recreate it).",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}

@@ -29,7 +29,10 @@ The server follows clean architecture with clear separation between:
 
 ## Available MCP Tools
 
-The server exposes **37 tools** across 7 Kubernetes resource types. Every tool call requires a valid JWT `token` for authentication.
+The server exposes **37 tools** across 7 Kubernetes resource types. Authentication uses a JWT resolved from the transport context:
+
+- **stdio**: token from `K8S_TOKEN`
+- **HTTP**: token from `Authorization: Bearer <token>` header (fallback `X-Auth-Token`)
 
 ### Namespace
 
@@ -171,7 +174,8 @@ Create or edit the file **`.cursor/mcp.json`** (in your home directory or projec
       "command": "/absolute/path/to/kube-context/k8s-mcp",
       "args": ["--stdio"],
       "env": {
-        "JWT_SECRET": "your-secret-key"
+        "JWT_SECRET": "your-secret-key",
+        "K8S_TOKEN": "eyJhbGciOiJIUzI1NiIs..."
       }
     }
   }
@@ -186,62 +190,6 @@ Create or edit the file **`.cursor/mcp.json`** (in your home directory or projec
 ### 3. Restart Cursor
 
 After saving `mcp.json`, restart Cursor (or reload the window). The k8s-agent tools will appear automatically in the MCP tool list. You can verify by asking the AI assistant to call `list_namespaces`.
-
-### 4. Passing the authentication token
-
-> **Important:** The k8s-agent uses JWT-based authentication. The token is **not** sent via HTTP headers — it must be passed as a **`token` parameter** in every MCP tool call. This is how authentication works locally: each tool expects a `token` field in its input arguments.
-
-When using Cursor, include the token directly in your prompt so the AI assistant sends it on every call. For example:
-
-```
-Use the following token for all k8s-agent tool calls:
-eyJhbGciOiJIUzI1NiIs...
-```
-
-The AI assistant will then include `"token": "eyJhbGciOiJIUzI1NiIs..."` as a parameter in every tool invocation automatically.
-
-You can generate a token using the included `jwt-gen` CLI:
-
-```bash
-go run cmd/jwt-gen/main.go
-```
-
-### 5. (Optional) Auto-inject the token
-
-To avoid passing the JWT token manually on every tool call, you can add it to the environment and create a Cursor rule to inject it automatically:
-
-**a)** Add `K8S_TOKEN` to the MCP config:
-
-```json
-{
-  "mcpServers": {
-    "k8s-mcp": {
-      "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
-      "args": ["--stdio"],
-      "env": {
-        "JWT_SECRET": "your-secret-key",
-        "K8S_TOKEN": "eyJhbGciOiJIUzI1NiIs..."
-      }
-    }
-  }
-}
-```
-
-**b)** Create a Cursor rule at `.cursor/rules/k8s-agent.mdc`:
-
-```markdown
----
-description: Rules for k8s-agent MCP tools
-globs: *
----
-
-When using any k8s-agent MCP tool, always pass the token from the
-environment variable K8S_TOKEN. Example:
-
-  token: ${K8S_TOKEN}
-
-Never ask the user for the token — use the environment variable directly.
-```
 
 ---
 
@@ -268,6 +216,7 @@ For MCP clients that communicate over stdin/stdout:
 
 ```bash
 export JWT_SECRET="your-secret-key"
+export K8S_TOKEN="<your-jwt-token>"
 
 go run cmd/main.go --stdio
 ```
@@ -320,7 +269,9 @@ This means the permissions of each request are determined by the **Kubernetes RB
 
 ### How it works
 
-1. The client sends a JWT `token` in every MCP tool call.
+1. The server resolves the JWT from the transport context:
+   - stdio: `K8S_TOKEN`
+   - HTTP: `Authorization: Bearer <token>` (or `X-Auth-Token`)
 2. The k8s-agent validates the signature (HS256) and expiration.
 3. Claims are extracted and mapped to Kubernetes impersonation headers:
 
@@ -422,80 +373,6 @@ subjects:
 
 Then, bind regular Roles/ClusterRoles to `jane@example.com` (or her groups) to control what resources she can actually access.
 
-## Authentication — Sending the Token
-
-Every MCP tool call requires a valid JWT in the `token` parameter. The k8s-agent **only validates** tokens — it never generates them. Token generation is handled by an external service or CLI.
-
-### Sending the Token Locally (HTTP)
-
-When running the MCP server locally in HTTP mode (`http://localhost:8080/mcp`), the token is sent **inside the MCP tool call arguments**, not as an HTTP header.
-
-Every tool expects a `token` field in its input. For example, to list namespaces:
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "list_namespaces",
-    "arguments": {
-      "token": "eyJhbGciOiJIUzI1NiIs..."
-    }
-  }
-}
-```
-
-Full `curl` example against the local server:
-
-```bash
-curl -X POST http://localhost:8080/mcp \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"jsonrpc\": \"2.0\",
-    \"id\": 1,
-    \"method\": \"tools/call\",
-    \"params\": {
-      \"name\": \"list_namespaces\",
-      \"arguments\": {
-        \"token\": \"$TOKEN\"
-      }
-    }
-  }"
-```
-
-> **Note:** When using an MCP-compatible client (like Cursor with stdio mode), the client handles the MCP protocol automatically — you only need to configure the `JWT_SECRET` environment variable. The AI assistant will include the token in each tool call for you.
-
-### Sending the Token via HTTPS (Remote / Production)
-
-For production deployments behind a TLS reverse proxy (e.g. `https://k8s-agent.example.com/mcp`), the mechanism is **exactly the same** — the token travels inside the MCP tool call arguments:
-
-```bash
-curl -X POST https://k8s-agent.example.com/mcp \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"jsonrpc\": \"2.0\",
-    \"id\": 1,
-    \"method\": \"tools/call\",
-    \"params\": {
-      \"name\": \"list_pods\",
-      \"arguments\": {
-        \"token\": \"$TOKEN\",
-        \"namespace\": \"production\"
-      }
-    }
-  }"
-```
-
-The difference from local usage is:
-
-| | Local (HTTP) | Remote (HTTPS) |
-|---|---|---|
-| **URL** | `http://localhost:8080/mcp` | `https://k8s-agent.example.com/mcp` |
-| **TLS** | No (development only) | Yes (reverse proxy handles TLS) |
-| **Token delivery** | `token` field in tool arguments | `token` field in tool arguments |
-| **Token source** | `jwt-gen` CLI or local token-issuer | Your organization's auth service, Keycloak, or the token-issuer |
-
-> **Security:** In production, always use HTTPS so the JWT is encrypted in transit. The token is embedded in the request body, so TLS ensures it cannot be intercepted.
-
 ## MCP Client Configuration
 
 ### Cursor / AI Clients (stdio)
@@ -515,7 +392,8 @@ Build once with `go build -o k8s-mcp cmd/main.go`, then point Cursor to the bina
       "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
       "args": ["--stdio"],
       "env": {
-        "JWT_SECRET": "your-secret-key"
+        "JWT_SECRET": "your-secret-key",
+        "K8S_TOKEN": "eyJhbGciOiJIUzI1NiIs..."
       }
     }
   }
@@ -533,26 +411,6 @@ Cursor compiles and runs on every startup — slower but requires no manual buil
       "command": "go",
       "args": ["run", "cmd/main.go", "--stdio"],
       "env": {
-        "JWT_SECRET": "your-secret-key"
-      }
-    }
-  }
-}
-```
-
-#### Auto-injecting the Token
-
-Since every tool call requires a `token` argument, you can automate this by adding the token to the `env` block and creating a Cursor rule.
-
-**1.** Add `K8S_TOKEN` to the MCP config:
-
-```json
-{
-  "mcpServers": {
-    "k8s-mcp": {
-      "command": "/absolute/path/to/k8s-agent-new/k8s-mcp",
-      "args": ["--stdio"],
-      "env": {
         "JWT_SECRET": "your-secret-key",
         "K8S_TOKEN": "eyJhbGciOiJIUzI1NiIs..."
       }
@@ -561,23 +419,7 @@ Since every tool call requires a `token` argument, you can automate this by addi
 }
 ```
 
-**2.** Create a Cursor rule at `.cursor/rules/k8s-agent.mdc`:
-
-```markdown
----
-description: Rules for k8s-agent MCP tools
-globs: *
----
-
-When using any k8s-agent MCP tool, always pass the token from the
-environment variable K8S_TOKEN. Example:
-
-  token: ${K8S_TOKEN}
-
-Never ask the user for the token — use the environment variable directly.
-```
-
-This way the AI assistant will automatically include the token in every tool call without manual input.
+No prompt-level token injection is needed because token transport is handled at the server context level.
 
 ### HTTP Clients
 
@@ -593,14 +435,17 @@ Or for remote deployments:
 POST https://k8s-agent.example.com/mcp
 ```
 
+Send the token in request headers:
+
+- `Authorization: Bearer <token>` (preferred)
+- `X-Auth-Token: <token>` (fallback)
+
 ## Project Structure
 
 ```
 k8s-agent-new/
 ├── cmd/
-│   ├── main.go                  # MCP server entry point
-│   ├── jwt-gen/                 # CLI tool for JWT generation
-│   └── token-issuer/            # HTTP service for JWT issuance
+│   └── main.go                  # MCP server entry point
 ├── internal/
 │   ├── core/
 │   │   ├── dto/                 # Data Transfer Objects

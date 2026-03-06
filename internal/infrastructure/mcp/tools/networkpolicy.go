@@ -10,7 +10,6 @@ import (
 )
 
 type CreateNetworkPolicyArgs struct {
-	AuthArgs
 	dto.NetworkPolicyCreate
 }
 
@@ -22,8 +21,8 @@ type UpdateNetworkPolicyArgs struct {
 func RegisterNetworkPolicyTools(server *mcp.Server, svc *networkpolicyService.Service) {
 	server.RegisterTool("list_network_policies",
 		"List all network policies in a Kubernetes namespace.",
-		func(args NamespacedArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -36,8 +35,8 @@ func RegisterNetworkPolicyTools(server *mcp.Server, svc *networkpolicyService.Se
 
 	server.RegisterTool("get_network_policy",
 		"Get details of a specific network policy by name and namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -50,8 +49,8 @@ func RegisterNetworkPolicyTools(server *mcp.Server, svc *networkpolicyService.Se
 
 	server.RegisterTool("create_network_policy",
 		"Create a new network policy in Kubernetes.",
-		func(args CreateNetworkPolicyArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args CreateNetworkPolicyArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -64,8 +63,8 @@ func RegisterNetworkPolicyTools(server *mcp.Server, svc *networkpolicyService.Se
 
 	server.RegisterTool("update_network_policy",
 		"Update an existing network policy (labels).",
-		func(args UpdateNetworkPolicyArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args UpdateNetworkPolicyArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -78,8 +77,8 @@ func RegisterNetworkPolicyTools(server *mcp.Server, svc *networkpolicyService.Se
 
 	server.RegisterTool("delete_network_policy",
 		"Delete a network policy from a Kubernetes namespace.",
-		func(args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args NamespacedResourceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}

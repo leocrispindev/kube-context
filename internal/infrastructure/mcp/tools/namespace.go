@@ -9,34 +9,30 @@ import (
 )
 
 type GetNamespaceArgs struct {
-	AuthArgs
 	Name string `json:"name" jsonschema:"required,description:Namespace name"`
 }
 
 type CreateNamespaceArgs struct {
-	AuthArgs
 	Name        string            `json:"name" jsonschema:"required,description:Namespace name to create"`
 	Labels      map[string]string `json:"labels,omitempty" jsonschema:"description:Labels for the namespace"`
 	Annotations map[string]string `json:"annotations,omitempty" jsonschema:"description:Annotations for the namespace"`
 }
 
 type UpdateNamespaceArgs struct {
-	AuthArgs
 	Name        string            `json:"name" jsonschema:"required,description:Namespace name to update"`
 	Labels      map[string]string `json:"labels,omitempty" jsonschema:"description:Updated labels"`
 	Annotations map[string]string `json:"annotations,omitempty" jsonschema:"description:Updated annotations"`
 }
 
 type DeleteNamespaceArgs struct {
-	AuthArgs
 	Name string `json:"name" jsonschema:"required,description:Namespace name to delete"`
 }
 
 func RegisterNamespaceTools(server *mcp.Server, svc *namespaceService.Service) {
 	server.RegisterTool("list_namespaces",
 		"List all Kubernetes namespaces accessible by the authenticated user.",
-		func(args AuthArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args EmptyArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -49,8 +45,8 @@ func RegisterNamespaceTools(server *mcp.Server, svc *namespaceService.Service) {
 
 	server.RegisterTool("get_namespace",
 		"Get details of a specific Kubernetes namespace.",
-		func(args GetNamespaceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args GetNamespaceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -63,8 +59,8 @@ func RegisterNamespaceTools(server *mcp.Server, svc *namespaceService.Service) {
 
 	server.RegisterTool("create_namespace",
 		"Create a new Kubernetes namespace.",
-		func(args CreateNamespaceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args CreateNamespaceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -76,8 +72,8 @@ func RegisterNamespaceTools(server *mcp.Server, svc *namespaceService.Service) {
 
 	server.RegisterTool("delete_namespace",
 		"Delete a Kubernetes namespace.",
-		func(args DeleteNamespaceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args DeleteNamespaceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -89,8 +85,8 @@ func RegisterNamespaceTools(server *mcp.Server, svc *namespaceService.Service) {
 
 	server.RegisterTool("update_namespace",
 		"Update labels and annotations of a Kubernetes namespace.",
-		func(args UpdateNamespaceArgs) (*mcp.ToolResponse, error) {
-			ctx, err := authenticate(context.Background(), args.Token)
+		func(ctx context.Context, args UpdateNamespaceArgs) (*mcp.ToolResponse, error) {
+			ctx, err := authenticate(ctx)
 			if err != nil {
 				return nil, err
 			}
