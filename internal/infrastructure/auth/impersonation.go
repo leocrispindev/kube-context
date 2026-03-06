@@ -1,4 +1,4 @@
-package adapter
+package auth
 
 import (
 	"context"
@@ -15,23 +15,23 @@ type ImpersonationInfo struct {
 	Extras map[string][]string
 }
 
-func ContextWithImpersonation(ctx context.Context, info ImpersonationInfo) context.Context {
+func contextWithImpersonation(ctx context.Context, info ImpersonationInfo) context.Context {
 	return context.WithValue(ctx, ImpersonationContextKey, info)
 }
 
-func ImpersonationFromContext(ctx context.Context) (ImpersonationInfo, bool) {
+func impersonationFromContext(ctx context.Context) (ImpersonationInfo, bool) {
 	info, ok := ctx.Value(ImpersonationContextKey).(ImpersonationInfo)
 	return info, ok
 }
 
 type ImpersonationRoundTripper struct {
-	base http.RoundTripper
+	Base http.RoundTripper
 }
 
 func (rt *ImpersonationRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	info, ok := ImpersonationFromContext(req.Context())
+	info, ok := impersonationFromContext(req.Context())
 	if !ok || info.User == "" {
-		return rt.base.RoundTrip(req)
+		return rt.Base.RoundTrip(req)
 	}
 
 	cloned := req.Clone(req.Context())
@@ -51,5 +51,5 @@ func (rt *ImpersonationRoundTripper) RoundTrip(req *http.Request) (*http.Respons
 		}
 	}
 
-	return rt.base.RoundTrip(cloned)
+	return rt.Base.RoundTrip(cloned)
 }

@@ -10,8 +10,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"k8s-agent-new/internal/infrastructure/adapter"
 )
 
 func ValidateTokenAndBuildContext(ctx context.Context, token string) (context.Context, error) {
@@ -34,7 +32,7 @@ func ValidateTokenAndBuildContext(ctx context.Context, token string) (context.Co
 		return nil, fmt.Errorf("JWT does not contain a valid user identity")
 	}
 
-	return adapter.ContextWithImpersonation(ctx, info), nil
+	return contextWithImpersonation(ctx, info), nil
 }
 
 func parseAndValidateJWT(token string, secret []byte) (map[string]interface{}, error) {
@@ -127,8 +125,8 @@ func decodeBase64URL(value string) ([]byte, error) {
 	return base64.RawURLEncoding.DecodeString(value)
 }
 
-func buildImpersonationInfo(claims map[string]interface{}) adapter.ImpersonationInfo {
-	info := adapter.ImpersonationInfo{
+func buildImpersonationInfo(claims map[string]interface{}) ImpersonationInfo {
+	info := ImpersonationInfo{
 		Extras: make(map[string][]string),
 	}
 

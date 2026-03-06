@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"fmt"
+	"k8s-agent-new/internal/infrastructure/auth"
 	"net/http"
 	"os"
 	"sync"
@@ -33,7 +34,7 @@ func InitClientProvider() (*ClientProvider, error) {
 		// this allows different users to have different permissions in the request
 		// this is a security feature that allows to restrict the access to the resources
 		config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
-			return &ImpersonationRoundTripper{base: rt}
+			return &auth.ImpersonationRoundTripper{Base: rt}
 		}
 
 		clientset, err := kubernetes.NewForConfig(config)
