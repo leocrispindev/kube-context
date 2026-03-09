@@ -3,8 +3,8 @@ package tools
 import (
 	"context"
 
-	"k8s-agent-new/internal/core/dto"
-	ingressService "k8s-agent-new/internal/core/service/ingress"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
+	ingressService "github.com/leocrispindev/kube-context/internal/core/service/ingress"
 
 	mcp "github.com/metoro-io/mcp-golang"
 )

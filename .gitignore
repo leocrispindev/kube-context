@@ -1,0 +1,21 @@
+# IDE
+.vscode/
+.idea/
+
+# Deploy templates (environment-specific, not tracked)
+deploy/
+
+# Binaries
+cmd/k8s-agent
+*.exe
+k8s-mcp
+
+# OS files
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# Draft / notes
+autenticacoa.md

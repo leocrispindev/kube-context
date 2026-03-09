@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/leocrispindev/kube-context/internal/infrastructure/auth"
 	"os"
 	"strings"
-
-	"k8s-agent-new/internal/infrastructure/auth"
 
 	"github.com/gin-gonic/gin"
 	mcp "github.com/metoro-io/mcp-golang"
@@ -42,11 +41,10 @@ func tokenFromContext(ctx context.Context) (string, error) {
 		return normalizeToken(headerToken)
 	}
 
-	envToken := strings.TrimSpace(os.Getenv("K8S_TOKEN"))
-	if envToken == "" {
-		return "", fmt.Errorf("missing authentication token for stdio transport (set K8S_TOKEN)")
+	if token := os.Getenv("MCP_AUTH_TOKEN"); token != "" {
+		return token, nil
 	}
-	return envToken, nil
+	return os.Getenv("K8S_TOKEN"), nil
 }
 
 func normalizeToken(raw string) (string, error) {

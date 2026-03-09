@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s-agent-new/internal/core/dto"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s-agent-new/internal/core/dto"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"

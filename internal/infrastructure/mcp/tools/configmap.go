@@ -3,8 +3,8 @@ package tools
 import (
 	"context"
 
-	"k8s-agent-new/internal/core/dto"
-	configmapService "k8s-agent-new/internal/core/service/configmap"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
+	configmapService "github.com/leocrispindev/kube-context/internal/core/service/configmap"
 
 	mcp "github.com/metoro-io/mcp-golang"
 )

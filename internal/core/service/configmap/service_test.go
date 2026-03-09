@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"k8s-agent-new/internal/core/dto"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"

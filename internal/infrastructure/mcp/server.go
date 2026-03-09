@@ -1,14 +1,14 @@
 package mcp
 
 import (
-	"k8s-agent-new/internal/core/service/configmap"
-	"k8s-agent-new/internal/core/service/deployment"
-	"k8s-agent-new/internal/core/service/ingress"
-	"k8s-agent-new/internal/core/service/namespace"
-	"k8s-agent-new/internal/core/service/networkpolicy"
-	"k8s-agent-new/internal/core/service/pod"
-	"k8s-agent-new/internal/core/service/service"
-	"k8s-agent-new/internal/infrastructure/mcp/tools"
+	"github.com/leocrispindev/kube-context/internal/core/service/configmap"
+	"github.com/leocrispindev/kube-context/internal/core/service/deployment"
+	"github.com/leocrispindev/kube-context/internal/core/service/ingress"
+	"github.com/leocrispindev/kube-context/internal/core/service/namespace"
+	"github.com/leocrispindev/kube-context/internal/core/service/networkpolicy"
+	"github.com/leocrispindev/kube-context/internal/core/service/pod"
+	"github.com/leocrispindev/kube-context/internal/core/service/service"
+	"github.com/leocrispindev/kube-context/internal/infrastructure/mcp/tools"
 
 	mcplib "github.com/metoro-io/mcp-golang"
 	"github.com/metoro-io/mcp-golang/transport"

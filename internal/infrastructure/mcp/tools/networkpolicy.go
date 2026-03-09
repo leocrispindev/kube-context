@@ -3,8 +3,8 @@ package tools
 import (
 	"context"
 
-	"k8s-agent-new/internal/core/dto"
-	networkpolicyService "k8s-agent-new/internal/core/service/networkpolicy"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
+	networkpolicyService "github.com/leocrispindev/kube-context/internal/core/service/networkpolicy"
 
 	mcp "github.com/metoro-io/mcp-golang"
 )

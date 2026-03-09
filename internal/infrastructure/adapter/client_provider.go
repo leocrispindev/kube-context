@@ -2,11 +2,11 @@ package adapter
 
 import (
 	"fmt"
-	"k8s-agent-new/internal/infrastructure/auth"
 	"net/http"
 	"os"
 	"sync"
 
+	authpkg "github.com/leocrispindev/kube-context/internal/infrastructure/auth"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -29,12 +29,8 @@ func InitClientProvider() (*ClientProvider, error) {
 			clientProviderErr = err
 			return
 		}
-		//Implement `Impersonnation` in every request
-		// this allows to impersonate a user in the request
-		// this allows different users to have different permissions in the request
-		// this is a security feature that allows to restrict the access to the resources
 		config.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
-			return &auth.ImpersonationRoundTripper{Base: rt}
+			return &authpkg.BearerTokenRoundTripper{Base: rt}
 		}
 
 		clientset, err := kubernetes.NewForConfig(config)

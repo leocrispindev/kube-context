@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"k8s-agent-new/internal/core/dto"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,47 +30,7 @@ func NewService(client kubernetes.Interface) *Service {
 	}
 }
 
-func (s *Service) ListServices(ctx context.Context, namespace string) (*dto.ServiceList, error) {
-	services, err := s.client.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list services: %w", err)
-	}
-
-	var dtos []dto.Service
-	for _, svc := range services.Items {
-		var ports []dto.ServicePort
-		for _, p := range svc.Spec.Ports {
-			ports = append(ports, dto.ServicePort{
-				Name:       p.Name,
-				Port:       p.Port,
-				TargetPort: p.TargetPort.IntVal,
-				NodePort:   p.NodePort,
-				Protocol:   string(p.Protocol),
-			})
-		}
-
-		dtos = append(dtos, dto.Service{
-			Name:         svc.Name,
-			Namespace:    svc.Namespace,
-			Type:         string(svc.Spec.Type),
-			ClusterIP:    svc.Spec.ClusterIP,
-			ExternalIPs:  svc.Spec.ExternalIPs,
-			Ports:        ports,
-			Selector:     svc.Spec.Selector,
-			Labels:       svc.Labels,
-			CreationDate: svc.CreationTimestamp.String(),
-		})
-	}
-
-	return &dto.ServiceList{Services: dtos}, nil
-}
-
-func (s *Service) GetService(ctx context.Context, namespace string, serviceName string) (*dto.Service, error) {
-	svc, err := s.client.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get service: %w", err)
-	}
-
+func mapServiceToDTO(svc *v1.Service) dto.Service {
 	var ports []dto.ServicePort
 	for _, p := range svc.Spec.Ports {
 		ports = append(ports, dto.ServicePort{
@@ -82,17 +42,50 @@ func (s *Service) GetService(ctx context.Context, namespace string, serviceName 
 		})
 	}
 
-	return &dto.Service{
-		Name:         svc.Name,
-		Namespace:    svc.Namespace,
-		Type:         string(svc.Spec.Type),
-		ClusterIP:    svc.Spec.ClusterIP,
-		ExternalIPs:  svc.Spec.ExternalIPs,
-		Ports:        ports,
-		Selector:     svc.Spec.Selector,
-		Labels:       svc.Labels,
-		CreationDate: svc.CreationTimestamp.String(),
-	}, nil
+	var lbIngress []dto.LBIngress
+	for _, ing := range svc.Status.LoadBalancer.Ingress {
+		lbIngress = append(lbIngress, dto.LBIngress{
+			IP:       ing.IP,
+			Hostname: ing.Hostname,
+		})
+	}
+
+	return dto.Service{
+		Name:                svc.Name,
+		Namespace:           svc.Namespace,
+		Type:                string(svc.Spec.Type),
+		ClusterIP:           svc.Spec.ClusterIP,
+		ExternalIPs:         svc.Spec.ExternalIPs,
+		LoadBalancerIngress: lbIngress,
+		Ports:               ports,
+		Selector:            svc.Spec.Selector,
+		Labels:              svc.Labels,
+		CreationDate:        svc.CreationTimestamp.String(),
+	}
+}
+
+func (s *Service) ListServices(ctx context.Context, namespace string) (*dto.ServiceList, error) {
+	services, err := s.client.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list services: %w", err)
+	}
+
+	var dtos []dto.Service
+	for i := range services.Items {
+		dtos = append(dtos, mapServiceToDTO(&services.Items[i]))
+	}
+
+	return &dto.ServiceList{Services: dtos}, nil
+}
+
+func (s *Service) GetService(ctx context.Context, namespace string, serviceName string) (*dto.Service, error) {
+	svc, err := s.client.CoreV1().Services(namespace).Get(ctx, serviceName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get service: %w", err)
+	}
+
+	result := mapServiceToDTO(svc)
+	return &result, nil
 }
 
 func (s *Service) CreateService(ctx context.Context, serviceCreate *dto.ServiceCreate) (*dto.Service, error) {

@@ -3,7 +3,7 @@ package tools
 import (
 	"context"
 
-	namespaceService "k8s-agent-new/internal/core/service/namespace"
+	namespaceService "github.com/leocrispindev/kube-context/internal/core/service/namespace"
 
 	mcp "github.com/metoro-io/mcp-golang"
 )

@@ -5,15 +5,21 @@ type ServiceList struct {
 }
 
 type Service struct {
-	Name         string            `json:"name"`
-	Namespace    string            `json:"namespace"`
-	Type         string            `json:"type"`
-	ClusterIP    string            `json:"cluster_ip"`
-	ExternalIPs  []string          `json:"external_ips,omitempty"`
-	Ports        []ServicePort     `json:"ports"`
-	Selector     map[string]string `json:"selector"`
-	Labels       map[string]string `json:"labels"`
-	CreationDate string            `json:"creation_date"`
+	Name                string            `json:"name"`
+	Namespace           string            `json:"namespace"`
+	Type                string            `json:"type"`
+	ClusterIP           string            `json:"cluster_ip"`
+	ExternalIPs         []string          `json:"external_ips,omitempty"`
+	LoadBalancerIngress []LBIngress       `json:"load_balancer_ingress,omitempty"`
+	Ports               []ServicePort     `json:"ports"`
+	Selector            map[string]string `json:"selector"`
+	Labels              map[string]string `json:"labels"`
+	CreationDate        string            `json:"creation_date"`
+}
+
+type LBIngress struct {
+	IP       string `json:"ip,omitempty"`
+	Hostname string `json:"hostname,omitempty"`
 }
 
 type ServicePort struct {

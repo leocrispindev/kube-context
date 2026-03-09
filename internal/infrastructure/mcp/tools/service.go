@@ -3,8 +3,8 @@ package tools
 import (
 	"context"
 
-	"k8s-agent-new/internal/core/dto"
-	svcService "k8s-agent-new/internal/core/service/service"
+	"github.com/leocrispindev/kube-context/internal/core/dto"
+	svcService "github.com/leocrispindev/kube-context/internal/core/service/service"
 
 	mcp "github.com/metoro-io/mcp-golang"
 )

@@ -1,4 +1,4 @@
-module k8s-agent-new
+module github.com/leocrispindev/kube-context
 
 go 1.25.0
 
