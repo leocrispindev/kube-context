@@ -29,10 +29,7 @@ The server follows clean architecture with clear separation between:
 
 ## Available MCP Tools
 
-The server exposes **38 tools** across 7 Kubernetes resource types. Authentication uses a cloud-provider token resolved from the transport context:
-
-- **stdio**: token from `MCP_AUTH_TOKEN` (fallback `K8S_TOKEN`) — typically set via a cloud CLI (e.g. `aws eks get-token`)
-- **HTTP**: token from `Authorization: Bearer <token>` header (fallback `X-Auth-Token`)
+The server exposes **38 tools** across 7 Kubernetes resource types:
 
 ### Namespace
 
@@ -107,52 +104,7 @@ The server exposes **38 tools** across 7 Kubernetes resource types. Authenticati
 | `update_network_policy` | Update network policy labels |
 | `delete_network_policy` | Delete a network policy |
 
-## Configuration
-
-### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `MCP_AUTH_TOKEN` | No | — | Cloud-provider token used in `--stdio` transport (fallback: `K8S_TOKEN`). Obtained via cloud CLI (e.g. `aws eks get-token`) |
-| `K8S_TOKEN` | No | — | Fallback token for `--stdio` transport (used when `MCP_AUTH_TOKEN` is not set) |
-| `PORT` | No | `8080` | HTTP server port |
-| `K8S_API_SERVER` | No | — | Remote Kubernetes API server URL (e.g. `https://k8s.example.com:6443`) |
-| `K8S_CA_CERT_PATH` | No | — | Path to the CA certificate for the remote API server (required unless `K8S_INSECURE=true`) |
-| `K8S_BASE_TOKEN` | No | — | Base bearer token for the remote API server connection (optional; per-request tokens override this) |
-| `K8S_INSECURE` | No | `false` | Set to `true` to skip TLS verification when connecting to the API server |
-| `K8S_IN_CLUSTER` | No | `false` | Set to `true` to use in-cluster Kubernetes config (for pods running inside the cluster) |
-| `KUBECONFIG` | No | `~/.kube/config` | Path to the kubeconfig file |
-
-### Kubernetes Connection
-
-Choose **one** of the following methods:
-
-#### Kubeconfig (default)
-
-Uses `~/.kube/config` automatically. Override with:
-
-```bash
-export KUBECONFIG="/path/to/your/kubeconfig"
-```
-
-#### Remote API Server
-
-```bash
-export K8S_API_SERVER="https://k8s.example.com:6443"
-export K8S_CA_CERT_PATH="/path/to/ca.crt"
-export K8S_BASE_TOKEN="optional-base-token"  # optional; per-request tokens override this
-export K8S_INSECURE="false"                  # set to "true" to skip TLS verification
-```
-
-#### In-Cluster
-
-```bash
-export K8S_IN_CLUSTER="true"
-```
-
 ## Quick Start with Cursor
-
-The fastest way to get the k8s-agent running locally inside **Cursor** as an MCP server.
 
 ### Prerequisites
 
@@ -168,11 +120,11 @@ cd kube-context
 go build -o k8s-mcp cmd/main.go
 ```
 
-This produces a `k8s-mcp` binary in the project root.
-
 ### 2. Configure Cursor
 
-Create or edit the file **`.cursor/mcp.json`** (in your home directory or project root) and add the k8s-agent server:
+Create or edit **`.cursor/mcp.json`** (in your home directory or project root):
+
+#### Option A — Pre-built binary (recommended)
 
 ```json
 {
@@ -188,22 +140,33 @@ Create or edit the file **`.cursor/mcp.json`** (in your home directory or projec
 }
 ```
 
-> **Tip:** Replace `/absolute/path/to/kube-context/k8s-mcp` with the actual path to the built binary. The token value should come from your cloud provider CLI (e.g. `aws eks get-token --cluster-name my-cluster`).
-> ```
-> /Users/me/workspace/kube-context/k8s-mcp
-> ```
+> **Tip:** The token value should come from your cloud provider CLI (e.g. `aws eks get-token --cluster-name my-cluster`).
+
+#### Option B — `go run` (no build step)
+
+Cursor compiles and runs on every startup — slower but requires no manual build:
+
+```json
+{
+  "mcpServers": {
+    "k8s-agent": {
+      "command": "go",
+      "args": ["run", "cmd/main.go", "--stdio"],
+      "env": {
+        "K8S_TOKEN": "<cloud-provider-token>"
+      }
+    }
+  }
+}
+```
 
 ### 3. Restart Cursor
 
-After saving `mcp.json`, restart Cursor (or reload the window). The k8s-agent tools will appear automatically in the MCP tool list. You can verify by asking the AI assistant to call `list_namespaces`.
+After saving `mcp.json`, restart Cursor (or reload the window). The tools will appear automatically in the MCP tool list. Verify by asking the AI assistant to call `list_namespaces`.
 
 ---
 
-## Running Locally (standalone)
-
-If you prefer running the server **outside** of Cursor (e.g. for testing with `curl`):
-
-### HTTP Mode (default)
+## Running Locally (HTTP)
 
 ```bash
 go run cmd/main.go
@@ -213,8 +176,6 @@ The server starts at `http://localhost:8080` with:
 
 - **MCP endpoint** — `POST /mcp`
 - **Health check** — `GET /health`
-
-Test with curl:
 
 ```bash
 TOKEN="$(aws eks get-token --cluster-name my-cluster --output json | jq -r '.status.token')"
@@ -237,17 +198,21 @@ go run cmd/main.go --stdio
 
 ## Running Remotely (HTTPS)
 
-For production deployments, the server runs in HTTP mode and should be placed behind a reverse proxy that handles TLS termination. Clients connect via HTTPS and pass the cloud-provider token in the `Authorization` header.
+For production deployments, the server runs in HTTP mode behind a reverse proxy that handles TLS termination.
 
-### 1. Build the binary
+### 1. Build and configure
 
 ```bash
 go build -o k8s-agent cmd/main.go
+
+export K8S_API_SERVER="https://k8s-api.internal:6443"
+export K8S_CA_CERT_PATH="/etc/k8s/ca.crt"
+export PORT="8080"
+
+./k8s-agent
 ```
 
-### 2. Deploy with a reverse proxy
-
-Use **nginx**, **Traefik**, **Caddy**, or any reverse proxy that handles TLS. Example nginx snippet:
+### 2. Reverse proxy (example: nginx)
 
 ```nginx
 server {
@@ -266,20 +231,7 @@ server {
 }
 ```
 
-### 3. Configure environment on the server
-
-```bash
-export K8S_API_SERVER="https://k8s-api.internal:6443"
-export K8S_CA_CERT_PATH="/etc/k8s/ca.crt"
-export K8S_BASE_TOKEN="optional-base-token"
-export PORT="8080"
-
-./k8s-agent
-```
-
-### 4. Connect from Cursor (remote HTTPS)
-
-If the MCP server is deployed remotely behind HTTPS, configure Cursor to connect over HTTP (streamable-http transport):
+### 3. Connect from Cursor (remote)
 
 ```json
 {
@@ -294,18 +246,7 @@ If the MCP server is deployed remotely behind HTTPS, configure Cursor to connect
 }
 ```
 
-### 5. Test with curl
-
-```bash
-TOKEN="$(aws eks get-token --cluster-name my-cluster --output json | jq -r '.status.token')"
-
-curl -X POST https://k8s-agent.example.com/mcp \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_namespaces","arguments":{}}}'
-```
-
-## Cloud-Provider Token Authentication
+## Authentication
 
 The k8s-agent follows the standard managed-cluster pattern (EKS/GKE/AKS): every Kubernetes API call is authenticated with a **cloud-provider token**. The server never generates or manages tokens itself — it forwards the token supplied by the client.
 
@@ -316,11 +257,11 @@ The k8s-agent follows the standard managed-cluster pattern (EKS/GKE/AKS): every 
    - **stdio**: `MCP_AUTH_TOKEN` env var (fallback `K8S_TOKEN`)
    - **HTTP/HTTPS**: `Authorization: Bearer <token>` header (fallback `X-Auth-Token`)
 3. The server attaches the token to every outgoing Kubernetes API request as `Authorization: Bearer <token>`.
-4. The Kubernetes API server validates the token using its configured cloud authenticator and applies RBAC policies.
+4. The Kubernetes API server validates the token and applies RBAC policies.
 
 ### Obtaining tokens
 
-Tokens are **short-lived** and must be refreshed periodically. Common commands:
+Tokens are **short-lived** and must be refreshed periodically:
 
 | Cloud | Command | Typical TTL |
 |-------|---------|-------------|
@@ -328,72 +269,31 @@ Tokens are **short-lived** and must be refreshed periodically. Common commands:
 | GCP (GKE) | `gke-gcloud-auth-plugin` | ~1 hour |
 | Azure (AKS) | `kubelogin` | ~1 hour |
 
-`kubeconfig` exec plugins can also generate tokens automatically when using tools like `kubectl`.
+## Configuration
 
-## MCP Client Configuration
+### Environment Variables
 
-### Cursor / AI Clients (stdio)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_AUTH_TOKEN` | — | Cloud-provider token for `--stdio` transport (fallback: `K8S_TOKEN`) |
+| `K8S_TOKEN` | — | Fallback token for `--stdio` transport |
+| `PORT` | `8080` | HTTP server port |
+| `K8S_API_SERVER` | — | Remote Kubernetes API server URL |
+| `K8S_CA_CERT_PATH` | — | CA certificate path for the remote API server (required unless `K8S_INSECURE=true`) |
+| `K8S_BASE_TOKEN` | — | Base bearer token for the remote API server connection (per-request tokens override this) |
+| `K8S_INSECURE` | `false` | Skip TLS verification when connecting to the API server |
+| `K8S_IN_CLUSTER` | `false` | Use in-cluster Kubernetes config (for pods running inside the cluster) |
+| `KUBECONFIG` | `~/.kube/config` | Path to the kubeconfig file |
 
-> See [Quick Start with Cursor](#quick-start-with-cursor) for a complete step-by-step guide.
+### Kubernetes Connection
 
-There are two ways to configure Cursor:
+Choose **one** method:
 
-#### Option A — Pre-built binary (recommended)
-
-Build once with `go build -o k8s-mcp cmd/main.go`, then point Cursor to the binary:
-
-```json
-{
-  "mcpServers": {
-    "k8s-mcp": {
-      "command": "/absolute/path/to/kube-context/k8s-mcp",
-      "args": ["--stdio"],
-      "env": {
-        "K8S_TOKEN": "<cloud-provider-token>"
-      }
-    }
-  }
-}
-```
-
-#### Option B — `go run` (no build step)
-
-Cursor compiles and runs on every startup — slower but requires no manual build:
-
-```json
-{
-  "mcpServers": {
-    "k8s-agent": {
-      "command": "go",
-      "args": ["run", "cmd/main.go", "--stdio"],
-      "env": {
-        "K8S_TOKEN": "<cloud-provider-token>"
-      }
-    }
-  }
-}
-```
-
-No prompt-level token injection is needed — the cloud-provider token is resolved from the transport context automatically.
-
-### HTTP Clients
-
-Point your MCP client to:
-
-```
-POST http://localhost:8080/mcp
-```
-
-Or for remote deployments:
-
-```
-POST https://k8s-agent.example.com/mcp
-```
-
-Send the token in request headers:
-
-- `Authorization: Bearer <token>` (preferred)
-- `X-Auth-Token: <token>` (fallback)
+| Method | When to use | Setup |
+|--------|-------------|-------|
+| **Kubeconfig** (default) | Local development | Uses `~/.kube/config` automatically. Override with `KUBECONFIG` env var |
+| **Remote API Server** | Direct connection to a cluster endpoint | Set `K8S_API_SERVER`, `K8S_CA_CERT_PATH` (and optionally `K8S_BASE_TOKEN`, `K8S_INSECURE`) |
+| **In-Cluster** | Running as a pod inside the cluster | Set `K8S_IN_CLUSTER=true` |
 
 ## Project Structure
 
@@ -411,8 +311,6 @@ kube-context/
 │       ├── auth/                # Token context and request auth
 │       └── mcp/                 # MCP server & tool registration
 │           └── tools/           # One file per resource type
-├── deploy/
-│   └── rbac/                    # Multi-tenant RBAC templates
 ├── go.mod
 └── go.sum
 ```
@@ -420,8 +318,6 @@ kube-context/
 ## Contributing
 
 This is an **open-source** project and contributions are welcome!
-
-### Getting Started
 
 1. **Fork** the repository
 2. **Clone** your fork:
@@ -435,14 +331,7 @@ This is an **open-source** project and contributions are welcome!
    ```
 4. **Make your changes** following the project conventions
 5. **Test** your changes against a Kubernetes cluster
-6. **Commit** with clear, descriptive messages:
-   ```bash
-   git commit -m "add support for StatefulSet resources"
-   ```
-7. **Push** and open a **Pull Request**:
-   ```bash
-   git push origin feature/my-feature
-   ```
+6. **Commit** and open a **Pull Request**
 
 ### Conventions
 
@@ -451,7 +340,6 @@ This is an **open-source** project and contributions are welcome!
 - Add DTOs for new resource types in `internal/core/dto/`
 - Register new tools in `internal/infrastructure/mcp/tools/`
 - Use cloud-provider token auth and RBAC (no user-generated tokens or impersonation)
-- Write descriptive MCP tool names and descriptions
 
 ### Ideas for Contribution
 
@@ -459,9 +347,7 @@ This is an **open-source** project and contributions are welcome!
 - Improve error messages and validation
 - Add unit and integration tests
 - Create Helm charts or Kustomize manifests for deployment
-- Write documentation and examples
 
 ## License
 
 This project is open-source. See the [LICENSE](LICENSE) file for details.
-
