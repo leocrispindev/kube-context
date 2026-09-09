@@ -246,6 +246,54 @@ server {
 }
 ```
 
+## Docker
+
+A pre-built image is published to Docker Hub as [`leocrispindev/k8s-mcp`](https://hub.docker.com/r/leocrispindev/k8s-mcp) — no clone or build step required.
+
+```bash
+docker pull leocrispindev/k8s-mcp
+```
+
+The image runs the HTTP transport by default (`ENTRYPOINT ["/app/k8s-mcp"]`, no `--stdio` flag) and listens on port `8080`. Pick the `docker run` example that matches how you connect to your cluster — these map directly to the [Kubernetes Connection](#kubernetes-connection) methods below.
+
+**Kubeconfig** (mount your existing `~/.kube/config` read-only):
+
+```bash
+docker run --rm -p 8080:8080 \
+  -v ~/.kube/config:/home/nonroot/.kube/config:ro \
+  -e KUBECONFIG=/home/nonroot/.kube/config \
+  leocrispindev/k8s-mcp
+```
+
+**Remote API server** (connect directly to a cluster endpoint, mounting its CA cert):
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e K8S_API_SERVER="https://k8s-api.internal:6443" \
+  -e K8S_CA_CERT_PATH=/ca.crt \
+  -v /path/to/ca.crt:/ca.crt:ro \
+  leocrispindev/k8s-mcp
+```
+
+**In-cluster** (only meaningful when the container itself runs as a Pod with a bound ServiceAccount — not applicable to a plain `docker run`):
+
+```yaml
+env:
+  - name: K8S_IN_CLUSTER
+    value: "true"
+```
+
+### Building and publishing the image
+
+The image is published manually (multi-arch, via `buildx`):
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t leocrispindev/k8s-mcp:latest \
+  -t leocrispindev/k8s-mcp:<version> \
+  --push .
+```
+
 ## Authentication
 
 The k8s-agent follows the standard managed-cluster pattern (EKS/GKE/AKS): every Kubernetes API call is authenticated with a **cloud-provider token**. The server never generates or manages tokens itself — it forwards the token supplied by the client.

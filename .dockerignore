@@ -1,0 +1,5 @@
+.git
+docs/
+*.md
+.vscode/
+wordpress-k8s.yaml
